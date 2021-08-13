@@ -13,10 +13,11 @@ type Server struct {
 	magicWord string
 }
 
-func NewServer() *Server {
+func NewServer(s *services.Services) *Server {
 	return &Server{
 		engine:    gin.Default(),
 		magicWord: "sudo", // :)
+		services:  s,
 	}
 }
 
