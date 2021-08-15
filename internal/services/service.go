@@ -9,8 +9,8 @@ type StoreService interface {
 }
 
 type AuthService interface {
-	GenerateTokens() (string, string, error)
-	RefreshTokens(string) (string, string, error)
+	GetTokenPair() (*tokenPair, error)
+	//RefreshTokens(string) (string, string, error)
 }
 
 type Services struct {
@@ -19,8 +19,9 @@ type Services struct {
 	AuthService
 }
 
-func NewServices(l LoggerService) *Services {
+func NewServices(l LoggerService, a AuthService) *Services {
 	return &Services{
 		LoggerService: l,
+		AuthService:   a,
 	}
 }

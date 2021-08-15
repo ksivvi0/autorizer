@@ -8,6 +8,9 @@ import (
 
 func (s *Server) pingHandler(c *gin.Context) {
 	s.services.LoggerService.WriteNotice(getRequestInfo(c))
+
+	_, _ = s.services.AuthService.GetTokenPair()
+
 	c.JSON(http.StatusOK, map[string]string{"ping": "pong"})
 }
 
