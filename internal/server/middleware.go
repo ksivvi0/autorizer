@@ -25,7 +25,7 @@ func (s *Server) authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bearerHeader := c.Request.Header.Get("Authorization")
 		if len(bearerHeader) == 0 {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "empty authorization header"})
+			c.JSON(http.StatusForbidden, gin.H{"error": "empty authorization header"})
 			c.Abort()
 		}
 		//todo: add parsing auth token
