@@ -12,13 +12,10 @@ type magicWordRequest struct {
 }
 
 func (s *Server) pingHandler(c *gin.Context) {
-	s.services.LoggerService.WriteNotice(getRequestInfo(c))
 	c.JSON(http.StatusOK, map[string]string{"ping": "pong"})
 }
 
 func (s *Server) generateTokensHandler(c *gin.Context) {
-	s.services.LoggerService.WriteNotice(getRequestInfo(c))
-
 	mwRequest := new(magicWordRequest)
 	if err := c.ShouldBindJSON(mwRequest); err != nil {
 		s.errorResponder(c, http.StatusBadRequest, err)
@@ -39,12 +36,10 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 }
 
 func (s *Server) refreshTokensHandler(c *gin.Context) {
-	s.services.LoggerService.WriteNotice(getRequestInfo(c))
 	c.AbortWithStatus(http.StatusNotImplemented)
 }
 
 func (s *Server) errorResponder(c *gin.Context, statusCode int, err error) {
-	s.services.LoggerService.WriteNotice(getRequestInfo(c))
 	c.JSON(statusCode, gin.H{"error": err.Error()})
 }
 
