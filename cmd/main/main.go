@@ -17,6 +17,6 @@ func main() {
 	a := services.NewAuth()
 
 	servs := services.NewServices(l, a)
-	srv := server.NewServer(servs)
+	srv := server.NewServer("localhost:8000", servs, true)
 	panic(srv.Run("localhost:8000"))
 }

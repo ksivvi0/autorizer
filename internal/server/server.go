@@ -4,26 +4,37 @@ import (
 	"authorized/internal/services"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"net/http"
+	"time"
 )
 
 type Server struct {
 	services  *services.Services
-	engine    *gin.Engine
 	address   string
 	magicWord string
+	engine    *http.Server
 }
 
-func NewServer(s *services.Services) *Server {
+func NewServer(addr string, s *services.Services, debug bool) *Server {
+	if !debug {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	return &Server{
-		engine:    gin.Default(),
 		magicWord: "sudo", // :)
 		services:  s,
+		engine: &http.Server{
+			Addr:         addr,
+			ReadTimeout:  time.Second * 10,
+			WriteTimeout: time.Second * 10,
+		},
 	}
 }
 
 func (s *Server) initRoutes() {
-	s.engine.GET("/ping", s.pingHandler)
-	s.engine.POST("/tokens", s.generateTokensHandler)
+	router := gin.Default()
+	router.GET("/ping", s.pingHandler)
+	router.POST("/tokens", s.generateTokensHandler)
+	s.engine.Handler = router
 }
 
 func (s *Server) Run(addr string) error {
@@ -31,5 +42,5 @@ func (s *Server) Run(addr string) error {
 	if addr == "" {
 		return errors.New("invalid address string")
 	}
-	return s.engine.Run(addr)
+	return s.engine.ListenAndServe()
 }

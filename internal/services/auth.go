@@ -8,38 +8,38 @@ import (
 )
 
 type Auth struct {
-	accessTokenInfo
-	refreshTokenInfo
+	AccessTokenInfo
+	RefreshTokenInfo
 }
 
-type accessTokenInfo struct {
-	accessTokenTTL time.Duration
-	accessTokenKey string
+type AccessTokenInfo struct {
+	AccessTokenTTL time.Duration
+	AccessTokenKey []byte
 	token          string
 }
 
-type refreshTokenInfo struct {
-	refreshTokenTTL time.Duration
-	refreshTokenKey string
+type RefreshTokenInfo struct {
+	RefreshTokenTTL time.Duration
+	RefreshTokenKey []byte
 	token           string
 }
 
 func NewAuth() *Auth {
 	return &Auth{
-		accessTokenInfo: accessTokenInfo{
-			accessTokenTTL: time.Minute * 5,
-			accessTokenKey: "99873dachas7d", //insecure
+		AccessTokenInfo: AccessTokenInfo{
+			AccessTokenTTL: time.Minute * 5,
+			AccessTokenKey: []byte("99873dachas7d"), //insecure
 		},
-		refreshTokenInfo: refreshTokenInfo{
-			refreshTokenTTL: time.Hour * 24,
-			refreshTokenKey: "aklsjdfhsdfh1", //insecure
+		RefreshTokenInfo: RefreshTokenInfo{
+			RefreshTokenTTL: time.Hour * 24,
+			RefreshTokenKey: []byte("aklsjdfhsdfh1"), //insecure
 		},
 	}
 }
 
 type tokenPair struct {
-	accessToken  string
-	refreshToken string
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 type tokenClaims struct {
@@ -48,50 +48,61 @@ type tokenClaims struct {
 }
 
 func (a *Auth) GetTokenPair() (*tokenPair, error) {
-	newUuid, err := uuid.NewUUID()
+	accessToken, err := a.generateToken(a.AccessTokenInfo)
 	if err != nil {
 		return nil, err
 	}
-	accessToken, err := a.generateToken(newUuid, a.accessTokenInfo)
-	refreshToken, err := a.generateToken(newUuid, a.refreshTokenInfo)
+	refreshToken, err := a.generateToken(a.RefreshTokenInfo)
+	if err != nil {
+		return nil, err
+	}
 
 	pair := &tokenPair{
-		accessToken:  accessToken,
-		refreshToken: refreshToken,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
 	}
 	return pair, nil
 }
 
-func (a *Auth) generateToken(uuid uuid.UUID, tokenInfo interface{}) (string, error) {
+func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 	switch tokenInfo.(type) {
-	case accessTokenInfo:
+	case AccessTokenInfo:
+		_uuid, err := uuid.NewUUID()
+		if err != nil {
+			return "", err
+		}
 		claims := jwt.NewWithClaims(
 			jwt.SigningMethodHS512,
 			tokenClaims{
 				StandardClaims: jwt.StandardClaims{
-					ExpiresAt: time.Now().Add(a.accessTokenTTL).Unix(),
+					ExpiresAt: time.Now().Add(a.AccessTokenTTL).Unix(),
 					IssuedAt:  time.Now().Unix(),
 				},
-				uuid: uuid,
+				uuid: _uuid,
 			},
 		)
-		aToken, err := claims.SignedString(a.accessTokenKey)
+		aToken, err := claims.SignedString(a.AccessTokenKey)
 		if err != nil {
 			return "", err
 		}
 		return aToken, nil
-	case refreshTokenInfo:
+
+	case RefreshTokenInfo:
+		_uuid, err := uuid.NewUUID()
+		if err != nil {
+			return "", err
+		}
 		claims := jwt.NewWithClaims(
 			jwt.SigningMethodHS512,
 			tokenClaims{
 				StandardClaims: jwt.StandardClaims{
-					ExpiresAt: time.Now().Add(a.accessTokenTTL).Unix(),
+					ExpiresAt: time.Now().Add(a.RefreshTokenTTL).Unix(),
 					IssuedAt:  time.Now().Unix(),
 				},
-				uuid: uuid,
+				uuid: _uuid,
 			},
 		)
-		rToken, err := claims.SignedString(a.accessTokenKey)
+		rToken, err := claims.SignedString(a.RefreshTokenKey)
 		if err != nil {
 			return "", err
 		}
