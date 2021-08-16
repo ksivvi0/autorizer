@@ -2,7 +2,8 @@ package services
 
 import (
 	"errors"
-	"github.com/dgrijalva/jwt-go"
+	"fmt"
+	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"time"
 )
@@ -10,17 +11,16 @@ import (
 type Auth struct {
 	AccessTokenInfo
 	RefreshTokenInfo
+	tokenKey []byte
 }
 
 type AccessTokenInfo struct {
 	AccessTokenTTL time.Duration
-	AccessTokenKey []byte
 	token          string
 }
 
 type RefreshTokenInfo struct {
 	RefreshTokenTTL time.Duration
-	RefreshTokenKey []byte
 	token           string
 }
 
@@ -28,12 +28,11 @@ func NewAuth() *Auth {
 	return &Auth{
 		AccessTokenInfo: AccessTokenInfo{
 			AccessTokenTTL: time.Minute * 5,
-			AccessTokenKey: []byte("99873dachas7d"), //insecure
 		},
 		RefreshTokenInfo: RefreshTokenInfo{
 			RefreshTokenTTL: time.Hour * 24,
-			RefreshTokenKey: []byte("aklsjdfhsdfh1"), //insecure
 		},
+		tokenKey: []byte("sdfnslfn123"), //insecure, read from config or environment
 	}
 }
 
@@ -81,7 +80,7 @@ func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 				uuid: _uuid,
 			},
 		)
-		aToken, err := claims.SignedString(a.AccessTokenKey)
+		aToken, err := claims.SignedString(a.tokenKey)
 		if err != nil {
 			return "", err
 		}
@@ -102,7 +101,7 @@ func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 				uuid: _uuid,
 			},
 		)
-		rToken, err := claims.SignedString(a.RefreshTokenKey)
+		rToken, err := claims.SignedString(a.tokenKey)
 		if err != nil {
 			return "", err
 		}
@@ -112,25 +111,26 @@ func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 	}
 }
 
-//func (a *Auth) ParseToken(tokenIn string) ([]string, error) {
-//token, err := jwt.ParseWithClaims(tokenIn, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-//	if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-//		return nil, errors.New("неверный алгоритм подписи токена")
-//	}
-//	return []byte(a.tokenKey), nil
-//})
-//if err != nil {
-//	return nil, err
-//}
-//
-//claims, ok := token.Claims.(*tokenClaims)
-//if !ok {
-//	return nil, errors.New("bad token")
-//}
-//
-//params := make([]string, 2)
-//params[0] = claims.PNumber
-//params[1] = claims.HashPasswd
-//
-//return params, nil
-//}
+func (a *Auth) RefreshTokens(rToken string) (*tokenPair, error) {
+	//pair := new(tokenPair)
+	return nil, errors.New("method not implemented")
+}
+
+func (a *Auth) ParseToken(tokenIn string) (string, error) {
+	token, err := jwt.ParseWithClaims(tokenIn, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return "", errors.New(fmt.Sprintf("invalid signing method %v", token.Header))
+		}
+		return a.tokenKey, nil
+	})
+	if err != nil {
+		return "", err
+	}
+
+	claims, ok := token.Claims.(*tokenClaims)
+	if !ok {
+		return "", errors.New("bad token")
+	}
+
+	return claims.uuid.String(), nil
+}
