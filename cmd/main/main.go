@@ -1,8 +1,8 @@
 package main
 
 import (
-	"authorized/internal/server"
-	"authorized/internal/services"
+	"authorizer/internal/server"
+	"authorizer/internal/services"
 )
 
 func init() {

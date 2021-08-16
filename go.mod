@@ -1,4 +1,4 @@
-module authorized
+module authorizer
 
 go 1.16
 
