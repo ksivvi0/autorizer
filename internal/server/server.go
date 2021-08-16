@@ -1,7 +1,7 @@
 package server
 
 import (
-	"authorized/internal/services"
+	"authorizer/internal/services"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
