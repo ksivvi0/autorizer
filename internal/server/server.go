@@ -33,7 +33,12 @@ func NewServer(addr string, s *services.Services, debug bool) *Server {
 func (s *Server) initRoutes() {
 	router := gin.Default()
 	router.Use(s.loggerMiddleware())
-	router.GET("/ping", s.pingHandler)
+
+	api := router.Group("/api/")
+	api.Use(s.authMiddleware())
+	{
+		api.GET("/ping", s.pingHandler)
+	}
 	router.POST("/tokens", s.generateTokensHandler)
 	s.engine.Handler = router
 }
