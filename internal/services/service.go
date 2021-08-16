@@ -10,7 +10,8 @@ type StoreService interface {
 
 type AuthService interface {
 	GetTokenPair() (*tokenPair, error)
-	//RefreshTokens(string) (string, string, error)
+	RefreshTokens(rToken string) (*tokenPair, error)
+	ParseToken(token string) (string, error)
 }
 
 type Services struct {
