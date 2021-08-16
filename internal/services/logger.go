@@ -16,8 +16,8 @@ func NewLogger(file string) (*Logger, error) {
 		return nil, err
 	}
 
-	eLogger := log.New(f, "ERROR", log.Ltime|log.Lshortfile)
-	nLogger := log.New(f, "NOTICE", log.Ltime|log.Lshortfile)
+	eLogger := log.New(f, "ERROR: ", log.Ltime|log.Lshortfile)
+	nLogger := log.New(f, "NOTICE: ", log.Ltime|log.Lshortfile)
 	return &Logger{
 		errors:  eLogger,
 		notices: nLogger,
