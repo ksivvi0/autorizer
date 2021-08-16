@@ -40,6 +40,7 @@ func (s *Server) refreshTokensHandler(c *gin.Context) {
 }
 
 func (s *Server) errorResponder(c *gin.Context, statusCode int, err error) {
+	s.services.WriteError(fmt.Sprintf("%v status: %d, error: %v", c.ClientIP(), statusCode, err))
 	c.JSON(statusCode, gin.H{"error": err.Error()})
 }
 
