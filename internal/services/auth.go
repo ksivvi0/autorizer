@@ -11,7 +11,8 @@ import (
 type Auth struct {
 	AccessTokenInfo
 	RefreshTokenInfo
-	tokenKey []byte
+	accessTokenKey  []byte
+	refreshTokenKey []byte
 }
 
 type AccessTokenInfo struct {
@@ -24,7 +25,7 @@ type RefreshTokenInfo struct {
 	token           string
 }
 
-func NewAuth() *Auth {
+func NewAuthInstance() *Auth {
 	return &Auth{
 		AccessTokenInfo: AccessTokenInfo{
 			AccessTokenTTL: time.Minute * 5,
@@ -32,7 +33,8 @@ func NewAuth() *Auth {
 		RefreshTokenInfo: RefreshTokenInfo{
 			RefreshTokenTTL: time.Hour * 24,
 		},
-		tokenKey: []byte("sdfnslfn123"), //insecure, read from config or environment
+		accessTokenKey:  []byte("kdfjjhsdfpw"),    //insecure, read from config or environment
+		refreshTokenKey: []byte("asasddhnkjasl8"), //insecure, read from config or environment
 	}
 }
 
@@ -46,7 +48,7 @@ type tokenClaims struct {
 	uuid uuid.UUID
 }
 
-func (a *Auth) GetTokenPair() (*tokenPair, error) {
+func (a *Auth) CreateTokenPair() (*tokenPair, error) {
 	accessToken, err := a.generateToken(a.AccessTokenInfo)
 	if err != nil {
 		return nil, err
@@ -80,7 +82,7 @@ func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 				uuid: _uuid,
 			},
 		)
-		aToken, err := claims.SignedString(a.tokenKey)
+		aToken, err := claims.SignedString(a.accessTokenKey)
 		if err != nil {
 			return "", err
 		}
@@ -101,7 +103,7 @@ func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 				uuid: _uuid,
 			},
 		)
-		rToken, err := claims.SignedString(a.tokenKey)
+		rToken, err := claims.SignedString(a.refreshTokenKey)
 		if err != nil {
 			return "", err
 		}
@@ -116,12 +118,17 @@ func (a *Auth) RefreshTokens(rToken string) (*tokenPair, error) {
 	return nil, errors.New("method not implemented")
 }
 
-func (a *Auth) ParseToken(tokenIn string) (string, error) {
+func (a *Auth) ValidateToken(tokenIn string, refresh bool) (string, error) {
+
+	//TODO: get information about token in DB
 	token, err := jwt.ParseWithClaims(tokenIn, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return "", errors.New(fmt.Sprintf("invalid signing method %v", token.Header))
 		}
-		return a.tokenKey, nil
+		if !refresh {
+			return a.accessTokenKey, nil
+		}
+		return a.refreshTokenKey, nil
 	})
 	if err != nil {
 		return "", err

@@ -27,7 +27,7 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 		return
 	}
 
-	pair, err := s.services.AuthService.GetTokenPair()
+	pair, err := s.services.AuthService.CreateTokenPair()
 	if err != nil {
 		s.errorResponder(c, http.StatusForbidden, err)
 		return

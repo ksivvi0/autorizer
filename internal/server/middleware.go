@@ -11,15 +11,14 @@ import (
 
 func (s *Server) loggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		t := time.Now()
-
+		rStart := time.Now()
 		c.Next()
 
-		latency := time.Since(t)
+		latency := time.Since(rStart)
 		s.services.LoggerService.WriteNotice(fmt.Sprintf("%s: latency: %v", c.ClientIP(), latency))
 
-		status := c.Writer.Status()
-		s.services.LoggerService.WriteNotice(fmt.Sprintf("%s: status: %v", c.ClientIP(), status))
+		responseStatus := c.Writer.Status()
+		s.services.LoggerService.WriteNotice(fmt.Sprintf("%s: status: %v", c.ClientIP(), responseStatus))
 	}
 }
 
@@ -43,7 +42,7 @@ func (s *Server) authMiddleware() gin.HandlerFunc {
 			c.Abort()
 		}
 
-		_uuid, err := s.services.AuthService.ParseToken(token)
+		_uuid, err := s.services.AuthService.ValidateToken(token, false)
 		if err != nil {
 			s.errorResponder(c, http.StatusForbidden, err)
 			c.Abort()

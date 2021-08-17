@@ -15,7 +15,10 @@ type Server struct {
 	engine    *http.Server
 }
 
-func NewServer(addr string, s *services.Services, debug bool) *Server {
+func NewServerInstance(addr string, s *services.Services, debug bool) (*Server, error) {
+	if len(addr) == 0 {
+		return nil, errors.New("invalid address")
+	}
 	if !debug {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -27,7 +30,7 @@ func NewServer(addr string, s *services.Services, debug bool) *Server {
 			ReadTimeout:  time.Second * 10,
 			WriteTimeout: time.Second * 10,
 		},
-	}
+	}, nil
 }
 
 func (s *Server) initRoutes() {
@@ -43,10 +46,8 @@ func (s *Server) initRoutes() {
 	s.engine.Handler = router
 }
 
-func (s *Server) Run(addr string) error {
+func (s *Server) Run() error {
 	s.initRoutes()
-	if addr == "" {
-		return errors.New("invalid address string")
-	}
+
 	return s.engine.ListenAndServe()
 }

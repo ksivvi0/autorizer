@@ -10,7 +10,7 @@ type Logger struct {
 	notices *log.Logger
 }
 
-func NewLogger(file string) (*Logger, error) {
+func NewLoggerInstance(file string) (*Logger, error) {
 	f, err := os.OpenFile(file, os.O_APPEND|os.O_CREATE, 0640)
 	if err != nil {
 		return nil, err
