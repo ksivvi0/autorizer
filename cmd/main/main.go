@@ -25,6 +25,9 @@ func main() {
 	if err != nil {
 		writeLogNPanic(l, err)
 	}
+	if err = s.Ping(); err != nil {
+		writeLogNPanic(l, err)
+	}
 
 	svcs := services.NewServices(l, a, s)
 	srv, err := server.NewServerInstance(os.Getenv("SERVER_ADDR"), svcs, true)

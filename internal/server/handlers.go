@@ -32,6 +32,9 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 		s.errorResponder(c, http.StatusForbidden, err)
 		return
 	}
+
+	s.services.StoreService.WriteTokensInfo(pair.RefreshToken)
+
 	c.JSON(http.StatusOK, pair)
 }
 
@@ -42,22 +45,4 @@ func (s *Server) refreshTokensHandler(c *gin.Context) {
 func (s *Server) errorResponder(c *gin.Context, statusCode int, err error) {
 	s.services.WriteError(fmt.Sprintf("%v status: %d, error: %v", c.ClientIP(), statusCode, err))
 	c.JSON(statusCode, gin.H{"error": err.Error()})
-}
-
-//func (s *Server) getResponseObject(key string, value interface{}) (*bytes.Buffer, error) {
-//	tmp := new(bytes.Buffer)
-//	ro := make(map[string]interface{})
-//	ro[key] = value
-//
-//	if err := json.NewEncoder(tmp).Encode(ro); err != nil {
-//		return nil, err
-//	}
-//	return tmp, nil
-//}
-
-func getRequestInfo(c *gin.Context) string {
-	return fmt.Sprintf("%v: %v",
-		c.Request.Header.Get("Host"),
-		c.Request.Header.Get("Method"),
-	)
 }

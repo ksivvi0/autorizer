@@ -5,6 +5,7 @@ import (
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"os"
 	"time"
 )
 
@@ -23,7 +24,7 @@ func NewServerInstance(addr string, s *services.Services, debug bool) (*Server, 
 		gin.SetMode(gin.ReleaseMode)
 	}
 	return &Server{
-		magicWord: "sudo", // :)
+		magicWord: os.Getenv("MAGIC_WORD"),
 		services:  s,
 		engine: &http.Server{
 			Addr:         addr,
@@ -42,7 +43,8 @@ func (s *Server) initRoutes() {
 	{
 		api.GET("/ping", s.pingHandler)
 	}
-	router.POST("/tokens", s.generateTokensHandler)
+	router.POST("/auth/tokens", s.generateTokensHandler)
+	router.POST("/auth/tokens/refresh", s.refreshTokensHandler)
 	s.engine.Handler = router
 }
 

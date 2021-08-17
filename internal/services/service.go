@@ -6,6 +6,7 @@ type LoggerService interface {
 }
 
 type StoreService interface {
+	WriteTokensInfo(token string) error
 }
 
 type AuthService interface {
