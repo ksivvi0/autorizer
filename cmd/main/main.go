@@ -26,8 +26,8 @@ func main() {
 		writeLogNPanic(l, err)
 	}
 
-	servs := services.NewServices(l, a, s)
-	srv, err := server.NewServerInstance(os.Getenv("SERVER_ADDR"), servs, true)
+	svcs := services.NewServices(l, a, s)
+	srv, err := server.NewServerInstance(os.Getenv("SERVER_ADDR"), svcs, true)
 	if err != nil {
 		writeLogNPanic(l, err)
 	}
