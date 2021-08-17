@@ -1,10 +1,12 @@
 package server
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
+	"time"
 )
 
 type magicWordRequest struct {
@@ -32,10 +34,16 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 		s.errorResponder(c, http.StatusForbidden, err)
 		return
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	id, err := s.services.StoreService.WriteTokensInfo(ctx, pair)
+	defer cancel()
 
-	s.services.StoreService.WriteTokensInfo(pair.RefreshToken)
+	if err != nil {
+		s.errorResponder(c, http.StatusInternalServerError, err)
+		return
+	}
 
-	c.JSON(http.StatusOK, pair)
+	c.JSON(http.StatusOK, id)
 }
 
 func (s *Server) refreshTokensHandler(c *gin.Context) {

@@ -18,11 +18,13 @@ type Auth struct {
 type AccessTokenInfo struct {
 	AccessTokenTTL time.Duration
 	token          string
+	uuid           string
 }
 
 type RefreshTokenInfo struct {
 	RefreshTokenTTL time.Duration
 	token           string
+	uuid            string
 }
 
 func NewAuthInstance() *Auth {
@@ -40,7 +42,9 @@ func NewAuthInstance() *Auth {
 
 type tokenPair struct {
 	AccessToken  string `json:"access_token"`
+	AccessUUID   string `json:"access_uuid"`
 	RefreshToken string `json:"refresh_token"`
+	RefreshUUID  string `json:"refresh_uuid"`
 }
 
 type tokenClaims struct {
@@ -49,29 +53,36 @@ type tokenClaims struct {
 }
 
 func (a *Auth) CreateTokenPair() (*tokenPair, error) {
-	accessToken, err := a.generateToken(a.AccessTokenInfo)
+	rUuid, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
 	}
-	refreshToken, err := a.generateToken(a.RefreshTokenInfo)
+	aUuid, err := uuid.NewUUID()
+	if err != nil {
+		return nil, err
+	}
+
+	atInfo, err := a.generateToken(aUuid, a.AccessTokenInfo)
+	if err != nil {
+		return nil, err
+	}
+	rtInfo, err := a.generateToken(rUuid, a.RefreshTokenInfo)
 	if err != nil {
 		return nil, err
 	}
 
 	pair := &tokenPair{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+		AccessToken:  atInfo,
+		AccessUUID:   aUuid.String(),
+		RefreshToken: rtInfo,
+		RefreshUUID:  rUuid.String(),
 	}
 	return pair, nil
 }
 
-func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
+func (a *Auth) generateToken(uuid uuid.UUID, tokenInfo interface{}) (string, error) {
 	switch tokenInfo.(type) {
 	case AccessTokenInfo:
-		_uuid, err := uuid.NewUUID()
-		if err != nil {
-			return "", err
-		}
 		claims := jwt.NewWithClaims(
 			jwt.SigningMethodHS512,
 			tokenClaims{
@@ -79,7 +90,7 @@ func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 					ExpiresAt: time.Now().Add(a.AccessTokenTTL).Unix(),
 					IssuedAt:  time.Now().Unix(),
 				},
-				uuid: _uuid,
+				uuid: uuid,
 			},
 		)
 		aToken, err := claims.SignedString(a.accessTokenKey)
@@ -89,10 +100,6 @@ func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 		return aToken, nil
 
 	case RefreshTokenInfo:
-		_uuid, err := uuid.NewUUID()
-		if err != nil {
-			return "", err
-		}
 		claims := jwt.NewWithClaims(
 			jwt.SigningMethodHS512,
 			tokenClaims{
@@ -100,7 +107,7 @@ func (a *Auth) generateToken(tokenInfo interface{}) (string, error) {
 					ExpiresAt: time.Now().Add(a.RefreshTokenTTL).Unix(),
 					IssuedAt:  time.Now().Unix(),
 				},
-				uuid: _uuid,
+				uuid: uuid,
 			},
 		)
 		rToken, err := claims.SignedString(a.refreshTokenKey)

@@ -1,12 +1,14 @@
 package services
 
+import "context"
+
 type LoggerService interface {
 	WriteError(data string)
 	WriteNotice(data string)
 }
 
 type StoreService interface {
-	WriteTokensInfo(token string) error
+	WriteTokensInfo(context.Context, *tokenPair) (interface{}, error)
 }
 
 type AuthService interface {

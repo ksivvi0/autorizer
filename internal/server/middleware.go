@@ -28,24 +28,28 @@ func (s *Server) authMiddleware() gin.HandlerFunc {
 		if len(bearerHeader) == 0 {
 			s.errorResponder(c, http.StatusUnauthorized, errors.New("empty authorization header"))
 			c.Abort()
+			return
 		}
 
 		bearerHeaderArr := strings.Split(bearerHeader, " ")
 		if len(bearerHeaderArr) != 2 || bearerHeaderArr[0] != "Bearer" {
 			s.errorResponder(c, http.StatusUnauthorized, errors.New("invalid authorization header"))
 			c.Abort()
+			return
 		}
 
 		token := bearerHeaderArr[1]
 		if token == "" {
 			s.errorResponder(c, http.StatusUnauthorized, errors.New("empty authorization token"))
 			c.Abort()
+			return
 		}
 
 		_uuid, err := s.services.AuthService.ValidateToken(token, false)
 		if err != nil {
 			s.errorResponder(c, http.StatusForbidden, err)
 			c.Abort()
+			return
 		}
 		c.Set("uuid", _uuid)
 		c.Next()
