@@ -15,7 +15,6 @@ func init() {
 }
 
 func main() {
-
 	l, err := services.NewLoggerInstance(os.Getenv("LOG_PATH"))
 	if err != nil {
 		panic(err)
