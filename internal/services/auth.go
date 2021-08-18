@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
+	"os"
 	"time"
 )
 
@@ -41,8 +42,8 @@ func NewAuthInstance() *Auth {
 		RefreshTokenInfo: RefreshTokenInfo{
 			RefreshTokenTTL: time.Hour * 24,
 		},
-		accessTokenKey:  []byte("kdfjjhsdfpw"),    //insecure, read from config or environment
-		refreshTokenKey: []byte("asasddhnkjasl8"), //insecure, read from config or environment
+		accessTokenKey:  []byte(os.Getenv("ACCESS_KEY")),
+		refreshTokenKey: []byte(os.Getenv("REFRESH_KEY")),
 	}
 }
 
