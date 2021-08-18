@@ -13,7 +13,8 @@ import (
 type AuthService interface {
 	CreateTokenPair() (*tokenPair, error)
 	RefreshTokens(string) (*tokenPair, error)
-	ValidateToken(string) (string, error)
+	ValidateToken(string, bool) (string, error)
+	GetDataFromToken(string, bool) (string, error)
 }
 
 type Auth struct {
@@ -118,12 +119,12 @@ func (a *Auth) RefreshTokens(rToken string) (*tokenPair, error) {
 	return nil, errors.New("method not implemented")
 }
 
-func (a *Auth) ValidateToken(bearerHeader string) (string, error) {
+func (a *Auth) ValidateToken(bearerHeader string, refresh bool) (string, error) {
 	tokenStr, err := parseHeader(bearerHeader)
 	if err != nil {
 		return "", err
 	}
-	uid, err := a.GetDataFromToken(tokenStr)
+	uid, err := a.GetDataFromToken(tokenStr, refresh)
 	if err != nil {
 		return "", err
 	}
@@ -143,11 +144,14 @@ func parseHeader(bearerHeader string) (string, error) {
 	return token, nil
 }
 
-func (a *Auth) GetDataFromToken(tokenStr string) (string, error) {
+func (a *Auth) GetDataFromToken(tokenStr string, refresh bool) (string, error) {
 	c := jwt.MapClaims{}
 	jwtToken, err := jwt.ParseWithClaims(tokenStr, c, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, errors.New(fmt.Sprintf("invalid signing method %v", token.Header))
+		}
+		if refresh {
+			return a.refreshTokenKey, nil
 		}
 		return a.accessTokenKey, nil
 	})

@@ -29,7 +29,7 @@ func (s *Server) authMiddleware(ctx context.Context) gin.HandlerFunc {
 			return
 		}
 
-		uid, err := s.services.AuthService.ValidateToken(bearerHeader)
+		uid, err := s.services.AuthService.ValidateToken(bearerHeader, false)
 		if err != nil {
 			s.errorResponder(c, http.StatusForbidden, err)
 			c.Abort()

@@ -15,12 +15,17 @@ import (
 type StoreService interface {
 	WriteTokensInfo(context.Context, tokenPair) (interface{}, error)
 	GetTokensInfo(context.Context, string) (*tokenPair, error)
+	DropTokensInfo(context.Context, string, string) (int64, error)
 }
 
 type Store struct {
 	client         *mongo.Client
 	mainCollection *mongo.Collection
 	cryptoKey      []byte
+}
+
+type refreshInfo struct {
+	ID primitive.ObjectID `bson:"_id"`
 }
 
 func NewStoreInstance(uri string) (*Store, error) {
@@ -127,10 +132,21 @@ func (s *Store) GetTokensInfo(ctx context.Context, uid string) (*tokenPair, erro
 	return pair, nil
 }
 
-func (s *Store) DropTokensInfo(ctx context.Context, uid string) (int64, error) {
-	result, err := s.mainCollection.DeleteOne(ctx, bson.D{{"access_token_uid", uid}})
-	if err != nil {
-		return 0, err
+func (s *Store) DropTokensInfo(ctx context.Context, key, value string) (int64, error) {
+	tmp := new(refreshInfo)
+	var dropped int64
+	if err := s.mainCollection.FindOne(ctx, bson.M{key: value}).Decode(tmp); err != nil {
+		return -1, err
 	}
-	return result.DeletedCount, nil
+	accessResult, err := s.mainCollection.DeleteOne(ctx, bson.M{"refresh_token_info": tmp.ID})
+	if err != nil {
+		return -1, err
+	}
+	dropped += accessResult.DeletedCount
+	refreshResult, err := s.mainCollection.DeleteOne(ctx, bson.M{"_id": tmp.ID})
+	if err != nil {
+		return -1, err
+	}
+	dropped += refreshResult.DeletedCount
+	return dropped, nil
 }
