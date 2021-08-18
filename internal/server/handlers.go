@@ -35,7 +35,7 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 		return
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	id, err := s.services.StoreService.WriteTokensInfo(ctx, pair)
+	id, err := s.services.StoreService.WriteTokensInfo(ctx, *pair)
 	defer cancel()
 
 	s.services.LoggerService.WriteNotice(fmt.Sprintf("created auth with %v", id))

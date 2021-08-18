@@ -1,8 +1,10 @@
 package services
 
 import (
+	"authorizer/internal/helpers"
 	"context"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
@@ -11,7 +13,7 @@ import (
 )
 
 type StoreService interface {
-	WriteTokensInfo(context.Context, *tokenPair) (interface{}, error)
+	WriteTokensInfo(context.Context, tokenPair) (interface{}, error)
 	GetTokensInfo(context.Context, string) (*tokenPair, error)
 }
 
@@ -37,14 +39,17 @@ func NewStoreInstance(uri string) (*Store, error) {
 		mainCollection: collection,
 		cryptoKey:      []byte(os.Getenv("CRYPTO_SECRET")),
 	}
-	if err = s.checkIndex(); err != nil {
+	if err = s.checkIndex("access_token_expired"); err != nil {
+		return nil, err
+	}
+	if err = s.checkIndex("refresh_token_expired"); err != nil {
 		return nil, err
 	}
 
 	return s, nil
 }
 
-func (s *Store) checkIndex() error {
+func (s *Store) checkIndex(indexName string) error {
 	var indexes []bson.M
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 
@@ -64,23 +69,17 @@ func (s *Store) checkIndex() error {
 	}
 	found := false
 	for _, v := range indexes {
-		if v["name"] == "expires_at_1" {
+		if v["name"] == indexName {
 			found = true
 			break
 		}
 	}
 	if !found {
-		var iName string = "expires_at_1"
-		var expiresAt int32 = 0
-		opts := options.Index()
-		opts.ExpireAfterSeconds = &expiresAt
-		opts.Name = &iName
-
-		tmp := mongo.IndexModel{
-			Keys:    bson.M{"expires_at": 1},
-			Options: opts,
+		data := mongo.IndexModel{
+			Keys:    bson.M{indexName: 1},
+			Options: options.Index().SetExpireAfterSeconds(0),
 		}
-		_, err := s.mainCollection.Indexes().CreateOne(ctx, tmp)
+		_, err := s.mainCollection.Indexes().CreateOne(ctx, data)
 		if err != nil {
 			return err
 		}
@@ -94,20 +93,34 @@ func (s *Store) Ping() error {
 	return s.client.Ping(ctx, readpref.Primary())
 }
 
-func (s *Store) WriteTokensInfo(ctx context.Context, pair *tokenPair) (interface{}, error) {
-	result, err := s.mainCollection.InsertOne(ctx, bson.D{
-		{"access_uid", pair.AccessUID},
-		{"expires_at", pair.AccessExpired.Format(time.UnixDate)},
+func (s *Store) WriteTokensInfo(ctx context.Context, pair tokenPair) (interface{}, error) {
+	hashedTokenString, err := helpers.GetHash(pair.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+	refreshInfoResult, err := s.mainCollection.InsertOne(ctx, bson.M{
+		"refresh_token_hash":    hashedTokenString,
+		"refresh_token_expired": pair.RefreshExpired,
+		"refresh_token_uid":     pair.RefreshUID,
 	})
 	if err != nil {
 		return nil, err
 	}
-	return result.InsertedID, nil
+	accessInfoResult, err := s.mainCollection.InsertOne(ctx, bson.M{
+		"access_token_uid":     pair.AccessUID,
+		"access_token_expired": primitive.NewDateTimeFromTime(pair.AccessExpired),
+		"refresh_token_info":   refreshInfoResult.InsertedID,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return accessInfoResult.InsertedID, nil
 }
 
 func (s *Store) GetTokensInfo(ctx context.Context, uid string) (*tokenPair, error) {
 	pair := new(tokenPair)
-	err := s.mainCollection.FindOne(ctx, bson.D{{"accessuid", uid}}).Decode(pair)
+	err := s.mainCollection.FindOne(ctx, bson.D{{"access_token_uid", uid}}).Decode(pair)
 	if err != nil {
 		return nil, err
 	}
@@ -115,7 +128,7 @@ func (s *Store) GetTokensInfo(ctx context.Context, uid string) (*tokenPair, erro
 }
 
 func (s *Store) DropTokensInfo(ctx context.Context, uid string) (int64, error) {
-	result, err := s.mainCollection.DeleteOne(ctx, bson.D{{"accessuid", uid}})
+	result, err := s.mainCollection.DeleteOne(ctx, bson.D{{"access_token_uid", uid}})
 	if err != nil {
 		return 0, err
 	}

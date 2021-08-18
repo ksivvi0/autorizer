@@ -38,10 +38,10 @@ type RefreshTokenInfo struct {
 func NewAuthInstance() *Auth {
 	return &Auth{
 		AccessTokenInfo: AccessTokenInfo{
-			AccessTokenTTL: time.Minute * 15,
+			AccessTokenTTL: time.Second * 600,
 		},
 		RefreshTokenInfo: RefreshTokenInfo{
-			RefreshTokenTTL: time.Hour * 24,
+			RefreshTokenTTL: time.Hour * 72,
 		},
 		accessTokenKey:  []byte(os.Getenv("ACCESS_KEY")),
 		refreshTokenKey: []byte(os.Getenv("REFRESH_KEY")),
@@ -49,12 +49,12 @@ func NewAuthInstance() *Auth {
 }
 
 type tokenPair struct {
-	AccessToken    string    `json:"access_token,omitempty" bson:"access_token,omitempty"`
-	AccessUID      string    `json:"access_uid" bson:"access_uid"`
-	AccessExpired  time.Time `json:"access_expired,omitempty" bson:"expires_at,omitempty"`
-	RefreshToken   string    `json:"refresh_token" bson:"refresh_token"`
-	RefreshUID     string    `json:"refresh_uid" bson:"refresh_uid"`
-	RefreshExpired time.Time `json:"refresh_expired,omitempty" bson:"refresh_expires,omitempty"`
+	AccessToken    string    `json:"access_token,omitempty" bson:"-"`
+	AccessUID      string    `json:"access_token_uid" bson:"access_token_uid"`
+	AccessExpired  time.Time `json:"access_token_expired,omitempty" bson:"access_token_expired"`
+	RefreshToken   string    `json:"refresh_token" bson:"refresh_token_hash"`
+	RefreshUID     string    `json:"refresh_token_uid" bson:"refresh_token_uid"`
+	RefreshExpired time.Time `json:"refresh_token_expired,omitempty" bson:"refresh_token_expired"`
 }
 
 func (a *Auth) CreateTokenPair() (*tokenPair, error) {
