@@ -6,13 +6,14 @@ import (
 	"github.com/golang-jwt/jwt"
 	"github.com/google/uuid"
 	"os"
+	"strings"
 	"time"
 )
 
 type AuthService interface {
 	CreateTokenPair() (*tokenPair, error)
-	RefreshTokens(rToken string) (*tokenPair, error)
-	ValidateToken(token string, refresh bool) (string, error)
+	RefreshTokens(string) (*tokenPair, error)
+	ValidateToken(string) (string, error)
 }
 
 type Auth struct {
@@ -25,19 +26,19 @@ type Auth struct {
 type AccessTokenInfo struct {
 	AccessTokenTTL time.Duration
 	token          string
-	uuid           string
+	uid            string
 }
 
 type RefreshTokenInfo struct {
 	RefreshTokenTTL time.Duration
 	token           string
-	uuid            string
+	uid             string
 }
 
 func NewAuthInstance() *Auth {
 	return &Auth{
 		AccessTokenInfo: AccessTokenInfo{
-			AccessTokenTTL: time.Minute * 5,
+			AccessTokenTTL: time.Minute * 15,
 		},
 		RefreshTokenInfo: RefreshTokenInfo{
 			RefreshTokenTTL: time.Hour * 24,
@@ -48,83 +49,68 @@ func NewAuthInstance() *Auth {
 }
 
 type tokenPair struct {
-	AccessToken  string `json:"access_token"`
-	AccessUUID   string `json:"access_uuid"`
-	RefreshToken string `json:"refresh_token"`
-	RefreshUUID  string `json:"refresh_uuid"`
-}
-
-type tokenClaims struct {
-	jwt.StandardClaims
-	uuid uuid.UUID
+	AccessToken    string    `json:"access_token,omitempty" bson:"access_token,omitempty"`
+	AccessUID      string    `json:"access_uid" bson:"access_uid"`
+	AccessExpired  time.Time `json:"access_expired,omitempty" bson:"expires_at,omitempty"`
+	RefreshToken   string    `json:"refresh_token" bson:"refresh_token"`
+	RefreshUID     string    `json:"refresh_uid" bson:"refresh_uid"`
+	RefreshExpired time.Time `json:"refresh_expired,omitempty" bson:"refresh_expires,omitempty"`
 }
 
 func (a *Auth) CreateTokenPair() (*tokenPair, error) {
-	rUuid, err := uuid.NewUUID()
+	rUid, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
 	}
-	aUuid, err := uuid.NewUUID()
+	aUid, err := uuid.NewUUID()
 	if err != nil {
 		return nil, err
 	}
 
-	atInfo, err := a.generateToken(aUuid, a.AccessTokenInfo)
+	aToken, aExpired, err := a.generateToken(aUid, a.AccessTokenInfo)
 	if err != nil {
 		return nil, err
 	}
-	rtInfo, err := a.generateToken(rUuid, a.RefreshTokenInfo)
+	rToken, rExpired, err := a.generateToken(rUid, a.RefreshTokenInfo)
 	if err != nil {
 		return nil, err
 	}
 
 	pair := &tokenPair{
-		AccessToken:  atInfo,
-		AccessUUID:   aUuid.String(),
-		RefreshToken: rtInfo,
-		RefreshUUID:  rUuid.String(),
+		AccessToken:    aToken,
+		AccessUID:      aUid.String(),
+		AccessExpired:  time.Unix(aExpired, 0),
+		RefreshToken:   rToken,
+		RefreshUID:     rUid.String(),
+		RefreshExpired: time.Unix(rExpired, 0),
 	}
 	return pair, nil
 }
 
-func (a *Auth) generateToken(uuid uuid.UUID, tokenInfo interface{}) (string, error) {
+func (a *Auth) generateToken(uid uuid.UUID, tokenInfo interface{}) (string, int64, error) {
+	var expTime int64
+	var key []byte
 	switch tokenInfo.(type) {
 	case AccessTokenInfo:
-		claims := jwt.NewWithClaims(
-			jwt.SigningMethodHS512,
-			tokenClaims{
-				StandardClaims: jwt.StandardClaims{
-					ExpiresAt: time.Now().Add(a.AccessTokenTTL).Unix(),
-					IssuedAt:  time.Now().Unix(),
-				},
-				uuid: uuid,
-			},
-		)
-		aToken, err := claims.SignedString(a.accessTokenKey)
-		if err != nil {
-			return "", err
-		}
-		return aToken, nil
-
+		expTime = time.Now().Add(a.AccessTokenTTL).Unix()
+		key = a.accessTokenKey
 	case RefreshTokenInfo:
-		claims := jwt.NewWithClaims(
-			jwt.SigningMethodHS512,
-			tokenClaims{
-				StandardClaims: jwt.StandardClaims{
-					ExpiresAt: time.Now().Add(a.RefreshTokenTTL).Unix(),
-					IssuedAt:  time.Now().Unix(),
-				},
-				uuid: uuid,
-			},
-		)
-		rToken, err := claims.SignedString(a.refreshTokenKey)
-		if err != nil {
-			return "", err
-		}
-		return rToken, nil
+		expTime = time.Now().Add(a.RefreshTokenTTL).Unix()
+		key = a.refreshTokenKey
 	default:
-		return "", errors.New("invalid argument")
+		return "", -1, errors.New("invalid argument")
 	}
+
+	claims := jwt.MapClaims{}
+	claims["iat"] = time.Now().Unix()
+	claims["uid"] = uid
+	claims["exp"] = expTime
+	at := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
+	token, err := at.SignedString(key)
+	if err != nil {
+		return "", -1, err
+	}
+	return token, expTime, nil
 }
 
 func (a *Auth) RefreshTokens(rToken string) (*tokenPair, error) {
@@ -132,26 +118,46 @@ func (a *Auth) RefreshTokens(rToken string) (*tokenPair, error) {
 	return nil, errors.New("method not implemented")
 }
 
-func (a *Auth) ValidateToken(tokenIn string, refresh bool) (string, error) {
-
-	//TODO: get information about token in DB
-	token, err := jwt.ParseWithClaims(tokenIn, &tokenClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return "", errors.New(fmt.Sprintf("invalid signing method %v", token.Header))
-		}
-		if !refresh {
-			return a.accessTokenKey, nil
-		}
-		return a.refreshTokenKey, nil
-	})
+func (a *Auth) ValidateToken(bearerHeader string) (string, error) {
+	tokenStr, err := parseHeader(bearerHeader)
 	if err != nil {
 		return "", err
 	}
+	uid, err := a.GetDataFromToken(tokenStr)
+	if err != nil {
+		return "", err
+	}
+	return uid, nil
+}
 
-	claims, ok := token.Claims.(*tokenClaims)
-	if !ok {
-		return "", errors.New("bad token")
+func parseHeader(bearerHeader string) (string, error) {
+	bearerHeaderArr := strings.Split(bearerHeader, " ")
+	if len(bearerHeaderArr) != 2 || bearerHeaderArr[0] != "Bearer" {
+		return "", errors.New("invalid authorization header")
 	}
 
-	return claims.uuid.String(), nil
+	token := bearerHeaderArr[1]
+	if len(token) == 0 {
+		return "", errors.New("invalid authorization header")
+	}
+	return token, nil
+}
+
+func (a *Auth) GetDataFromToken(tokenStr string) (string, error) {
+	c := jwt.MapClaims{}
+	jwtToken, err := jwt.ParseWithClaims(tokenStr, c, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New(fmt.Sprintf("invalid signing method %v", token.Header))
+		}
+		return a.accessTokenKey, nil
+	})
+	if err != nil || !jwtToken.Valid {
+		return "", err
+	}
+
+	claims, ok := jwtToken.Claims.(jwt.MapClaims)
+	if !ok {
+		return "", errors.New("invalid token claims")
+	}
+	return claims["uid"].(string), nil
 }

@@ -6,8 +6,8 @@ import (
 )
 
 type LoggerService interface {
-	WriteError(data string)
-	WriteNotice(data string)
+	WriteError(string)
+	WriteNotice(string)
 }
 
 type Logger struct {

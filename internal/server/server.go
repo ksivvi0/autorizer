@@ -2,6 +2,7 @@ package server
 
 import (
 	"authorizer/internal/services"
+	"context"
 	"errors"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -37,9 +38,9 @@ func NewServerInstance(addr string, s *services.Services, debug bool) (*Server, 
 func (s *Server) initRoutes() {
 	router := gin.Default()
 	router.Use(s.loggerMiddleware())
-
+	ctx := context.TODO()
 	api := router.Group("/api/")
-	api.Use(s.authMiddleware())
+	api.Use(s.authMiddleware(ctx))
 	{
 		api.GET("/ping", s.pingHandler)
 	}

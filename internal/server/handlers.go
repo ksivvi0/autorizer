@@ -38,12 +38,13 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 	id, err := s.services.StoreService.WriteTokensInfo(ctx, pair)
 	defer cancel()
 
+	s.services.LoggerService.WriteNotice(fmt.Sprintf("created auth with %v", id))
 	if err != nil {
 		s.errorResponder(c, http.StatusInternalServerError, err)
 		return
 	}
 
-	c.JSON(http.StatusOK, id)
+	c.JSON(http.StatusOK, pair)
 }
 
 func (s *Server) refreshTokensHandler(c *gin.Context) {
