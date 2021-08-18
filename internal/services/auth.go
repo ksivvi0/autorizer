@@ -8,6 +8,12 @@ import (
 	"time"
 )
 
+type AuthService interface {
+	CreateTokenPair() (*tokenPair, error)
+	RefreshTokens(rToken string) (*tokenPair, error)
+	ValidateToken(token string, refresh bool) (string, error)
+}
+
 type Auth struct {
 	AccessTokenInfo
 	RefreshTokenInfo

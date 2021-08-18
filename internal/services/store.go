@@ -9,6 +9,10 @@ import (
 	"time"
 )
 
+type StoreService interface {
+	WriteTokensInfo(context.Context, *tokenPair) (interface{}, error)
+}
+
 type Store struct {
 	client         *mongo.Client
 	mainCollection *mongo.Collection

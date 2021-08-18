@@ -5,6 +5,11 @@ import (
 	"os"
 )
 
+type LoggerService interface {
+	WriteError(data string)
+	WriteNotice(data string)
+}
+
 type Logger struct {
 	errors  *log.Logger
 	notices *log.Logger
