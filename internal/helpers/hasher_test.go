@@ -3,7 +3,11 @@ package helpers
 import "testing"
 
 func TestGetHash(t *testing.T) {
-	cases := []string{"hello", "привет, мир!"}
+	cases := []string{
+		"hello",
+		"привет, мир!",
+		"WlhsS01HVllRV2xQYVVwTFZqRlJhVXhEU21oaVIyTnBUMmxLU1ZWNlNURk9hVW81TG1WNVNuQmFRMGsyU1dwRmVrMTZZMmxNUTBveFl6SldlV0p0Um5SYVUwazJTVzFLY0dWdE9YVmFVMGx6U1cxc2FHUkRTVFpOVkZVMVRrUkpkMDlVV1hkTlEzZHBZMjA1YzFwVFNUWkpibFo2V2xoSmFXWlJMbHAyYTFsWmJubE5PVEk1UmswMFRsYzVYMmhUYVhNM1gzZ3pYemx5ZVcxelJFRjRPWGwxVDJOak1Vaz0=",
+	}
 	for _, v := range cases {
 		result, err := GetHash(v)
 		if err != nil {
