@@ -12,7 +12,6 @@ import (
 
 type AuthService interface {
 	CreateTokenPair() (*tokenPair, error)
-	RefreshTokens(string) (*tokenPair, error)
 	ValidateToken(string, bool) (string, error)
 	GetDataFromToken(string, bool) (string, error)
 }
@@ -112,11 +111,6 @@ func (a *Auth) generateToken(uid uuid.UUID, tokenInfo interface{}) (string, int6
 		return "", -1, err
 	}
 	return token, expTime, nil
-}
-
-func (a *Auth) RefreshTokens(rToken string) (*tokenPair, error) {
-	//pair := new(tokenPair)
-	return nil, errors.New("method not implemented")
 }
 
 func (a *Auth) ValidateToken(bearerHeader string, refresh bool) (string, error) {

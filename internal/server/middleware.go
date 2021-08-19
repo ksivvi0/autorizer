@@ -35,14 +35,14 @@ func (s *Server) authMiddleware(ctx context.Context) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		pair, err := s.services.StoreService.GetTokensInfo(ctx, uid)
+		_, err = s.services.StoreService.GetTokensInfo(ctx, uid)
 		if err != nil {
 			s.errorResponder(c, http.StatusForbidden, err)
 			c.Abort()
 			return
 		}
 
-		c.Set("tokenPair", pair)
+		//c.Set("tokenPair", pair)
 		c.Next()
 	}
 }
