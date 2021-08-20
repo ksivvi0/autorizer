@@ -1,6 +1,7 @@
 package server
 
 import (
+	"authorizer/internal/helpers"
 	"context"
 	"errors"
 	"fmt"
@@ -47,6 +48,8 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 	}
 	s.services.LoggerService.WriteNotice(fmt.Sprintf("created auth with %v", id))
 
+	pair.RefreshToken = helpers.EncodeString(pair.RefreshToken)
+
 	c.JSON(http.StatusOK, pair)
 }
 
@@ -56,6 +59,13 @@ func (s *Server) refreshTokensHandler(c *gin.Context) {
 		s.errorResponder(c, http.StatusBadRequest, err)
 		return
 	}
+
+	decodedRefreshToken, err := helpers.DecodeString(rTokenRequest.RefreshToken)
+	if err != nil {
+		s.errorResponder(c, http.StatusInternalServerError, err)
+		return
+	}
+	rTokenRequest.RefreshToken = decodedRefreshToken
 
 	ctx := context.Background()
 	rUid, err := s.services.AuthService.GetDataFromToken(rTokenRequest.RefreshToken, true)
@@ -101,6 +111,9 @@ func (s *Server) refreshTokensHandler(c *gin.Context) {
 		s.errorResponder(c, http.StatusInternalServerError, err)
 		return
 	}
+
+	pair.RefreshToken = helpers.EncodeString(pair.RefreshToken)
+
 	c.JSON(http.StatusOK, pair)
 }
 

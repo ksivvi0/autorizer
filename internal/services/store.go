@@ -3,6 +3,7 @@ package services
 import (
 	"authorizer/internal/helpers"
 	"context"
+	"errors"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -134,6 +135,10 @@ func (s *Store) GetTokensInfo(ctx context.Context, key, uid string) ([]tokenPair
 	cursor, err := s.mainCollection.Find(ctx, bson.D{{key, uid}})
 	if err != nil {
 		return nil, err
+	}
+
+	if cursor.RemainingBatchLength() == 0 {
+		return nil, errors.New("failed to get access token")
 	}
 
 	pairs := make([]tokenPair, 0, cursor.RemainingBatchLength())

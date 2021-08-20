@@ -23,6 +23,7 @@ func (s *Server) loggerMiddleware() gin.HandlerFunc {
 func (s *Server) authMiddleware(ctx context.Context) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bearerHeader := c.Request.Header.Get("Authorization")
+
 		if len(bearerHeader) == 0 {
 			s.errorResponder(c, http.StatusUnauthorized, errors.New("empty authorization header"))
 			c.Abort()
