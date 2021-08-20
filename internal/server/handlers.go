@@ -14,6 +14,7 @@ type magicWordRequest struct {
 }
 type refreshTokenRequest struct {
 	RefreshToken string `json:"refresh_token"`
+	AccessToken  string `json:"access_token"`
 }
 
 func (s *Server) pingHandler(c *gin.Context) {
@@ -32,7 +33,7 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 		return
 	}
 
-	pair, err := s.services.AuthService.CreateTokenPair()
+	pair, err := s.services.AuthService.CreateTokenPair("")
 	if err != nil {
 		s.errorResponder(c, http.StatusForbidden, err)
 		return
@@ -45,10 +46,6 @@ func (s *Server) generateTokensHandler(c *gin.Context) {
 		return
 	}
 	s.services.LoggerService.WriteNotice(fmt.Sprintf("created auth with %v", id))
-	if err != nil {
-		s.errorResponder(c, http.StatusInternalServerError, err)
-		return
-	}
 
 	c.JSON(http.StatusOK, pair)
 }
@@ -60,19 +57,39 @@ func (s *Server) refreshTokensHandler(c *gin.Context) {
 		return
 	}
 
+	ctx := context.Background()
 	rUid, err := s.services.AuthService.GetDataFromToken(rTokenRequest.RefreshToken, true)
 	if err != nil {
 		s.errorResponder(c, http.StatusForbidden, err)
 		return
 	}
 
-	dropId, err := s.services.StoreService.DropTokensInfo(nil, "refresh_token_uid", rUid)
+	tPairs, err := s.services.StoreService.GetTokensInfo(ctx, "refresh_token_uid", rUid)
 	if err != nil {
 		s.errorResponder(c, http.StatusForbidden, err)
 		return
 	}
-	s.services.LoggerService.WriteNotice(fmt.Sprintf("Drop %d refresh token with uid %s", dropId, rUid))
-	pair, err := s.services.AuthService.CreateTokenPair()
+
+	refreshTokenExists := false
+	for _, v := range tPairs {
+		if v.AccessUID != "" {
+			dropId, err := s.services.StoreService.DropTokensInfo(ctx, "access_token_uid", v.AccessUID)
+			if err != nil {
+				s.errorResponder(c, http.StatusForbidden, err)
+				return
+			}
+			s.services.LoggerService.WriteNotice(fmt.Sprintf("Drop %d access token with uid %s", dropId, v.AccessUID))
+		}
+		if v.RefreshToken != "" {
+			refreshTokenExists = true
+		}
+	}
+	if !refreshTokenExists {
+		s.errorResponder(c, http.StatusForbidden, errors.New("refresh token not found"))
+		return
+	}
+
+	pair, err := s.services.AuthService.CreateTokenPair(rUid)
 	if err != nil {
 		s.errorResponder(c, http.StatusForbidden, err)
 		return

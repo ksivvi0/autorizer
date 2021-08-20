@@ -11,7 +11,7 @@ import (
 )
 
 type AuthService interface {
-	CreateTokenPair() (*tokenPair, error)
+	CreateTokenPair(string) (*tokenPair, error)
 	ValidateToken(string, bool) (string, error)
 	GetDataFromToken(string, bool) (string, error)
 }
@@ -50,19 +50,18 @@ func NewAuthInstance() *Auth {
 
 type tokenPair struct {
 	AccessToken    string    `json:"access_token,omitempty" bson:"-"`
-	AccessUID      string    `json:"access_token_uid" bson:"access_token_uid"`
-	AccessExpired  time.Time `json:"access_token_expired,omitempty" bson:"access_token_expired"`
-	RefreshToken   string    `json:"refresh_token" bson:"refresh_token_hash"`
-	RefreshUID     string    `json:"refresh_token_uid" bson:"refresh_token_uid"`
-	RefreshExpired time.Time `json:"refresh_token_expired,omitempty" bson:"refresh_token_expired"`
+	AccessUID      string    `json:"access_token_uid,omitempty" bson:"access_token_uid,omitempty"`
+	AccessExpired  time.Time `json:"access_token_expired,omitempty" bson:"access_token_expired,omitempty"`
+	RefreshToken   string    `json:"refresh_token,omitempty" bson:"refresh_token_hash,omitempty"`
+	RefreshUID     string    `json:"refresh_token_uid,omitempty" bson:"refresh_token_uid,omitempty"`
+	RefreshExpired time.Time `json:"refresh_token_expired,omitempty" bson:"refresh_token_expired,omitempty"`
 }
 
-func (a *Auth) CreateTokenPair() (*tokenPair, error) {
-	rUid, err := uuid.NewUUID()
-	if err != nil {
-		return nil, err
-	}
-	aUid, err := uuid.NewUUID()
+func (a *Auth) CreateTokenPair(refreshUid string) (*tokenPair, error) {
+	pair := new(tokenPair)
+	refreshTokenExist := len(refreshUid) > 0
+
+	aUid, err := generateUUID()
 	if err != nil {
 		return nil, err
 	}
@@ -71,20 +70,37 @@ func (a *Auth) CreateTokenPair() (*tokenPair, error) {
 	if err != nil {
 		return nil, err
 	}
-	rToken, rExpired, err := a.generateToken(rUid, a.RefreshTokenInfo)
-	if err != nil {
-		return nil, err
+
+	pair.AccessUID = aUid.String()
+	pair.AccessToken = aToken
+	pair.AccessExpired = time.Unix(aExpired, 0)
+	pair.RefreshUID = refreshUid
+
+	if !refreshTokenExist {
+		rUid, err := generateUUID()
+		if err != nil {
+			return nil, err
+		}
+
+		rToken, rExpired, err := a.generateToken(rUid, a.RefreshTokenInfo)
+		if err != nil {
+			return nil, err
+		}
+
+		pair.RefreshUID = rUid.String()
+		pair.RefreshExpired = time.Unix(rExpired, 0)
+		pair.RefreshToken = rToken
 	}
 
-	pair := &tokenPair{
-		AccessToken:    aToken,
-		AccessUID:      aUid.String(),
-		AccessExpired:  time.Unix(aExpired, 0),
-		RefreshToken:   rToken,
-		RefreshUID:     rUid.String(),
-		RefreshExpired: time.Unix(rExpired, 0),
-	}
 	return pair, nil
+}
+
+func generateUUID() (uuid.UUID, error) {
+	uid, err := uuid.NewUUID()
+	if err != nil {
+		return [16]byte{}, err
+	}
+	return uid, nil
 }
 
 func (a *Auth) generateToken(uid uuid.UUID, tokenInfo interface{}) (string, int64, error) {

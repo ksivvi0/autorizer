@@ -35,7 +35,7 @@ func (s *Server) authMiddleware(ctx context.Context) gin.HandlerFunc {
 			c.Abort()
 			return
 		}
-		_, err = s.services.StoreService.GetTokensInfo(ctx, uid)
+		_, err = s.services.StoreService.GetTokensInfo(ctx, "access_token_uid", uid)
 		if err != nil {
 			s.errorResponder(c, http.StatusForbidden, err)
 			c.Abort()
